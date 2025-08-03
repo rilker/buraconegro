@@ -47,6 +47,45 @@
             WebGL Black Hole by <a href="#" target="_blank">Rilker Andrade</a> (<a href="https://github.com/brunosimon/webgl-black-hole" target="_blank">Source code</a>)
         </div>
 
-        <script type="module" src="./index.js"></script>
+        <script type="module">
+            console.log('Script iniciando...');
+            
+            try {
+                // Importar Three.js primeiro
+                const THREE = await import('three');
+                console.log('Three.js carregado:', THREE);
+                
+                // Criar uma cena básica para teste
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer();
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.querySelector('.experience').appendChild(renderer.domElement);
+                
+                // Criar um cubo simples para teste
+                const geometry = new THREE.BoxGeometry();
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+                
+                camera.position.z = 5;
+                
+                // Função de animação
+                function animate() {
+                    requestAnimationFrame(animate);
+                    cube.rotation.x += 0.01;
+                    cube.rotation.y += 0.01;
+                    renderer.render(scene, camera);
+                }
+                
+                animate();
+                console.log('Cena básica criada com sucesso!');
+                
+            } catch (error) {
+                console.error('Erro ao carregar:', error);
+                document.querySelector('.experience').innerHTML = '<div style="color: white; text-align: center; padding: 50px;">Erro ao carregar a simulação: ' + error.message + '</div>';
+            }
+        </script>
     </body>
 </html>
