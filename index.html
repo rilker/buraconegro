@@ -48,15 +48,27 @@
         </div>
 
         <script type="module">
-            console.log('Tentando carregar projeto original...');
+            console.log('Carregando projeto original...');
             
-            // Carregar o projeto original
-            import('./index.js').then(() => {
+            try {
+                // Importar CSS
+                import('./style.css');
+                
+                // Importar Experience
+                const Experience = await import('./sources/Experience/Experience.js');
+                console.log('Experience carregado:', Experience);
+                
+                // Criar instância
+                const experience = new Experience.default({
+                    targetElement: document.querySelector('.experience')
+                });
+                
                 console.log('Projeto original carregado com sucesso!');
-            }).catch(error => {
+                
+            } catch (error) {
                 console.error('Erro ao carregar projeto original:', error);
                 
-                // Se falhar, mostrar erro detalhado
+                // Mostrar erro detalhado
                 document.querySelector('.experience').innerHTML = `
                     <div style="color: white; text-align: center; padding: 50px; font-family: Arial, sans-serif;">
                         <h2>Erro ao carregar projeto original</h2>
@@ -65,7 +77,7 @@
                         <p>Verifique o console para mais detalhes.</p>
                     </div>
                 `;
-            });
+            }
         </script>
     </body>
 </html>
