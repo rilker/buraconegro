@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>WebGL Black Hole</title>
-        <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./sources/style.css">
         
         <!-- Open Graph -->
         <meta itemprop="name" content="WebGL Black Hole">
@@ -47,37 +47,6 @@
             WebGL Black Hole by <a href="#" target="_blank">Rilker Andrade</a> (<a href="https://github.com/brunosimon/webgl-black-hole" target="_blank">Source code</a>)
         </div>
 
-        <script type="module">
-            console.log('Carregando projeto original...');
-            
-            try {
-                // Importar CSS
-                import('./style.css');
-                
-                // Importar Experience
-                const Experience = await import('./sources/Experience/Experience.js');
-                console.log('Experience carregado:', Experience);
-                
-                // Criar instância
-                const experience = new Experience.default({
-                    targetElement: document.querySelector('.experience')
-                });
-                
-                console.log('Projeto original carregado com sucesso!');
-                
-            } catch (error) {
-                console.error('Erro ao carregar projeto original:', error);
-                
-                // Mostrar erro detalhado
-                document.querySelector('.experience').innerHTML = `
-                    <div style="color: white; text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-                        <h2>Erro ao carregar projeto original</h2>
-                        <p><strong>Erro:</strong> ${error.message}</p>
-                        <p><strong>Stack:</strong> ${error.stack}</p>
-                        <p>Verifique o console para mais detalhes.</p>
-                    </div>
-                `;
-            }
-        </script>
+        <script type="module" src="./sources/index.js"></script>
     </body>
 </html>
