@@ -44,9 +44,111 @@
         <div class="experience"></div>
 
         <div class="credits">
-            WebGL Black Hole by <a href="https://bruno-simon.com" target="_blank">Bruno Simon</a> (<a href="https://github.com/brunosimon/webgl-black-hole" target="_blank">Source code</a>)
+            WebGL Black Hole by <a href="#" target="_blank">Rilker Andrade</a> (<a href="https://github.com/brunosimon/webgl-black-hole" target="_blank">Source code</a>)
         </div>
 
-        <script type="module" src="./index.js"></script>
+        <script type="module">
+            console.log('Iniciando carregamento do projeto...');
+            
+            try {
+                // Tentar carregar o projeto original
+                console.log('Tentando importar Experience...');
+                const module = await import('./index.js');
+                console.log('Módulo carregado:', module);
+                
+                // Se chegou até aqui, o projeto carregou
+                console.log('Projeto carregado com sucesso!');
+                
+            } catch (error) {
+                console.error('Erro ao carregar projeto original:', error);
+                
+                // Fallback: criar uma versão básica do buraco negro
+                console.log('Criando versão básica do buraco negro...');
+                
+                try {
+                    const THREE = await import('three');
+                    console.log('Three.js carregado para fallback');
+                    
+                    // Configurações básicas
+                    const scene = new THREE.Scene();
+                    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                    const renderer = new THREE.WebGLRenderer({ antialias: true });
+                    
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    renderer.setClearColor(0x000000, 1);
+                    document.querySelector('.experience').appendChild(renderer.domElement);
+                    
+                    // Buraco negro básico
+                    const geometry = new THREE.PlaneGeometry(4, 4, 32, 32);
+                    const material = new THREE.ShaderMaterial({
+                        vertexShader: `
+                            varying vec2 vUv;
+                            void main() {
+                                vUv = uv;
+                                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                            }
+                        `,
+                        fragmentShader: `
+                            uniform float time;
+                            varying vec2 vUv;
+                            
+                            void main() {
+                                vec2 uv = vUv - 0.5;
+                                float dist = length(uv);
+                                
+                                // Distorção do buraco negro
+                                float distortion = 1.0 / (1.0 + dist * 10.0);
+                                
+                                // Disco de acreção
+                                vec3 color = vec3(0.0);
+                                if(dist > 0.3 && dist < 0.8) {
+                                    float angle = atan(uv.y, uv.x);
+                                    float spiral = sin(angle * 8.0 + time * 2.0) * 0.5 + 0.5;
+                                    color = vec3(0.8, 0.2, 0.8) * spiral * distortion;
+                                }
+                                
+                                // Partículas estelares
+                                float stars = sin(uv.x * 100.0 + time) * sin(uv.y * 100.0 + time * 0.5);
+                                stars = max(0.0, stars - 0.8) * 5.0;
+                                color += vec3(stars);
+                                
+                                gl_FragColor = vec4(color, 1.0);
+                            }
+                        `,
+                        uniforms: {
+                            time: { value: 0 }
+                        }
+                    });
+                    
+                    const blackHole = new THREE.Mesh(geometry, material);
+                    scene.add(blackHole);
+                    
+                    camera.position.z = 5;
+                    
+                    // Animação
+                    let time = 0;
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        time += 0.01;
+                        material.uniforms.time.value = time;
+                        renderer.render(scene, camera);
+                    }
+                    
+                    animate();
+                    console.log('Versão básica criada com sucesso!');
+                    
+                } catch (fallbackError) {
+                    console.error('Erro no fallback:', fallbackError);
+                    document.querySelector('.experience').innerHTML = `
+                        <div style="color: white; text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+                            <h2>Erro ao carregar a simulação</h2>
+                            <p>Erro original: ${error.message}</p>
+                            <p>Erro fallback: ${fallbackError.message}</p>
+                            <p>Verifique o console para mais detalhes.</p>
+                        </div>
+                    `;
+                }
+            }
+        </script>
     </body>
 </html>
