@@ -48,12 +48,12 @@
         </div>
 
         <script type="module">
-            console.log('Iniciando simulação do buraco negro...');
+            console.log('Carregando simulação original do buraco negro...');
             
             try {
                 // Importar Three.js
                 const THREE = await import('three');
-                console.log('Three.js carregado com sucesso');
+                console.log('Three.js carregado');
                 
                 // Configurações
                 const config = {
@@ -83,71 +83,157 @@
                 renderer.setClearColor(0x000000, 1);
                 document.querySelector('.experience').appendChild(renderer.domElement);
                 
-                // Criar buraco negro
-                const blackHoleGeometry = new THREE.PlaneGeometry(4, 4);
-                const blackHoleMaterial = new THREE.ShaderMaterial({
-                    vertexShader: `
-                        varying vec2 vUv;
-                        void main() {
-                            vUv = uv;
-                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                        }
-                    `,
-                    fragmentShader: `
-                        uniform float time;
-                        varying vec2 vUv;
+                // Shader do buraco negro original
+                const blackHoleVertexShader = `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+                
+                const blackHoleFragmentShader = `
+                    uniform float time;
+                    uniform float uIntensity;
+                    uniform vec2 uMouse;
+                    varying vec2 vUv;
+                    
+                    // Função de ruído
+                    float random(vec2 st) {
+                        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+                    }
+                    
+                    float noise(vec2 st) {
+                        vec2 i = floor(st);
+                        vec2 f = fract(st);
                         
-                        void main() {
-                            vec2 uv = vUv - 0.5;
-                            float dist = length(uv);
+                        float a = random(i);
+                        float b = random(i + vec2(1.0, 0.0));
+                        float c = random(i + vec2(0.0, 1.0));
+                        float d = random(i + vec2(1.0, 1.0));
+                        
+                        vec2 u = f * f * (3.0 - 2.0 * f);
+                        
+                        return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+                    }
+                    
+                    void main() {
+                        vec2 uv = vUv - 0.5;
+                        float dist = length(uv);
+                        
+                        // Efeito de distorção do buraco negro
+                        float distortion = 1.0 / (1.0 + dist * 15.0);
+                        distortion = pow(distortion, 2.0);
+                        
+                        // Cor base do buraco negro
+                        vec3 color = vec3(0.0);
+                        
+                        // Disco de acreção
+                        if(dist > 0.2 && dist < 0.9) {
+                            float angle = atan(uv.y, uv.x);
+                            float spiral = sin(angle * 12.0 + time * 3.0) * 0.5 + 0.5;
+                            spiral *= sin(angle * 6.0 - time * 2.0) * 0.5 + 0.5;
                             
-                            // Efeito de distorção
-                            float distortion = 1.0 / (1.0 + dist * 10.0);
+                            // Gradiente de cores
+                            vec3 accretionColor = mix(
+                                vec3(0.8, 0.1, 0.8), // Roxo
+                                vec3(0.2, 0.1, 0.8), // Azul
+                                spiral
+                            );
                             
-                            // Cor do buraco negro
-                            vec3 color = vec3(0.0);
+                            // Intensidade baseada na distância
+                            float intensity = smoothstep(0.2, 0.4, dist) * smoothstep(0.9, 0.7, dist);
+                            intensity *= spiral * distortion;
                             
-                            // Disco de acreção
-                            if(dist > 0.3 && dist < 0.8) {
-                                float angle = atan(uv.y, uv.x);
-                                float spiral = sin(angle * 8.0 + time * 2.0) * 0.5 + 0.5;
-                                color = vec3(0.8, 0.2, 0.8) * spiral * distortion;
-                            }
-                            
-                            // Partículas estelares
-                            float stars = sin(uv.x * 100.0 + time) * sin(uv.y * 100.0 + time * 0.5);
-                            stars = max(0.0, stars - 0.8) * 5.0;
-                            color += vec3(stars);
-                            
-                            gl_FragColor = vec4(color, 1.0);
+                            color += accretionColor * intensity * 2.0;
                         }
-                    `,
+                        
+                        // Efeito de lente gravitacional
+                        float lensing = 1.0 / (1.0 + dist * 20.0);
+                        lensing = pow(lensing, 3.0);
+                        
+                        // Partículas estelares
+                        vec2 starUV = uv * 50.0;
+                        float starNoise = noise(starUV + time * 0.1);
+                        starNoise = pow(starNoise, 8.0);
+                        starNoise *= smoothstep(0.8, 1.0, random(starUV));
+                        
+                        color += vec3(starNoise * 0.5);
+                        
+                        // Efeito de brilho central
+                        float glow = 1.0 / (1.0 + dist * 30.0);
+                        glow = pow(glow, 4.0);
+                        color += vec3(0.3, 0.1, 0.5) * glow;
+                        
+                        // Aplicar distorção final
+                        color *= distortion;
+                        
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `;
+                
+                // Material do buraco negro
+                const blackHoleMaterial = new THREE.ShaderMaterial({
+                    vertexShader: blackHoleVertexShader,
+                    fragmentShader: blackHoleFragmentShader,
                     uniforms: {
-                        time: { value: 0 }
+                        time: { value: 0 },
+                        uIntensity: { value: 1.0 },
+                        uMouse: { value: new THREE.Vector2(0, 0) }
                     }
                 });
                 
+                // Geometria do buraco negro
+                const blackHoleGeometry = new THREE.PlaneGeometry(6, 6, 64, 64);
                 const blackHole = new THREE.Mesh(blackHoleGeometry, blackHoleMaterial);
                 scenes.space.add(blackHole);
                 
-                // Adicionar partículas estelares
+                // Sistema de partículas estelares
                 const starsGeometry = new THREE.BufferGeometry();
-                const starsCount = 1000;
+                const starsCount = 2000;
                 const starsPositions = new Float32Array(starsCount * 3);
+                const starsSizes = new Float32Array(starsCount);
                 
                 for(let i = 0; i < starsCount * 3; i += 3) {
-                    starsPositions[i] = (Math.random() - 0.5) * 20;
-                    starsPositions[i + 1] = (Math.random() - 0.5) * 20;
-                    starsPositions[i + 2] = (Math.random() - 0.5) * 20;
+                    const radius = 5 + Math.random() * 15;
+                    const angle = Math.random() * Math.PI * 2;
+                    
+                    starsPositions[i] = Math.cos(angle) * radius;
+                    starsPositions[i + 1] = (Math.random() - 0.5) * 10;
+                    starsPositions[i + 2] = Math.sin(angle) * radius;
+                    
+                    starsSizes[i / 3] = Math.random() * 0.1 + 0.05;
                 }
                 
                 starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+                starsGeometry.setAttribute('size', new THREE.BufferAttribute(starsSizes, 1));
                 
-                const starsMaterial = new THREE.PointsMaterial({
-                    color: 0xffffff,
-                    size: 0.05,
+                // Shader para partículas estelares
+                const starsVertexShader = `
+                    attribute float size;
+                    varying float vSize;
+                    void main() {
+                        vSize = size;
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = size * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `;
+                
+                const starsFragmentShader = `
+                    varying float vSize;
+                    void main() {
+                        float alpha = 1.0 - smoothstep(0.0, vSize, length(gl_PointCoord - vec2(0.5)));
+                        gl_FragColor = vec4(1.0, 1.0, 1.0, alpha * 0.8);
+                    }
+                `;
+                
+                const starsMaterial = new THREE.ShaderMaterial({
+                    vertexShader: starsVertexShader,
+                    fragmentShader: starsFragmentShader,
                     transparent: true,
-                    opacity: 0.8
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
                 });
                 
                 const stars = new THREE.Points(starsGeometry, starsMaterial);
@@ -163,14 +249,14 @@
                     blackHoleMaterial.uniforms.time.value = time;
                     
                     // Rotação das estrelas
-                    stars.rotation.y += 0.001;
+                    stars.rotation.y += 0.0005;
                     
                     // Renderizar
                     renderer.render(scenes.space, camera);
                 }
                 
                 animate();
-                console.log('Simulação do buraco negro iniciada com sucesso!');
+                console.log('Simulação original do buraco negro carregada com sucesso!');
                 
                 // Responsividade
                 window.addEventListener('resize', () => {
@@ -183,9 +269,16 @@
                     renderer.setSize(config.width, config.height);
                 });
                 
+                // Interação com mouse
+                document.addEventListener('mousemove', (event) => {
+                    const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+                    const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+                    blackHoleMaterial.uniforms.uMouse.value.set(mouseX, mouseY);
+                });
+                
             } catch (error) {
-                console.error('Erro ao carregar simulação:', error);
-                document.querySelector('.experience').innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-family: Arial, sans-serif;">Erro ao carregar a simulação do buraco negro: ' + error.message + '</div>';
+                console.error('Erro ao carregar simulação original:', error);
+                document.querySelector('.experience').innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-family: Arial, sans-serif;">Erro ao carregar a simulação original do buraco negro: ' + error.message + '</div>';
             }
         </script>
     </body>
